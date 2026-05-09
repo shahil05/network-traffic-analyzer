@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Network Traffic Analyzer</title>
+</head>
+<body>
+    <h1>Network Traffic Analyzer</h1>
+
+    <input type="file" id="fileInput" accept=".pcap">
+    <button onclick="uploadFile()">Analyze</button>
+
+    <div id="results" style="display:none">
+        <h2>Total Packets: <span id="totalPackets"></span></h2>
+        <h3>Protocol Breakdown</h3>
+        <pre id="protocols"></pre>
+        <h3>Top Source IPs</h3>
+        <pre id="sources"></pre>
+        <h3>Top Destination IPs</h3>
+        <pre id="destinations"></pre>
+    </div>
+
+    <script>
+        async function uploadFile() {
+            const file = document.getElementById("fileInput").files[0];
+            if (!file) return alert("Please select a .pcap file");
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const response = await fetch("/upload", {
+                method: "POST",
+                body: formData
+            });
+
+            const data = await response.json();
+
+            document.getElementById("totalPackets").textContent = data.total_packets;
+            document.getElementById("protocols").textContent = JSON.stringify(data.protocol_counts, null, 2);
+            document.getElementById("sources").textContent = JSON.stringify(data.top_sources, null, 2);
+            document.getElementById("destinations").textContent = JSON.stringify(data.top_destinations, null, 2);
+            document.getElementById("results").style.display = "block";
+        }
+    </script>
+</body>
+</html>
