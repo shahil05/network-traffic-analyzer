@@ -2,45 +2,364 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Network Traffic Analyzer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f1117;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        header {
+            padding: 24px 40px;
+            border-bottom: 1px solid #1e2535;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #60a5fa;
+        }
+
+        header span {
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        .upload-zone {
+            max-width: 520px;
+            margin: 60px auto;
+            text-align: center;
+            padding: 0 20px;
+        }
+
+        .upload-zone h2 {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .upload-zone p {
+            color: #64748b;
+            margin-bottom: 32px;
+            font-size: 15px;
+        }
+
+        .drop-area {
+            border: 2px dashed #1e3a5f;
+            border-radius: 12px;
+            padding: 48px 32px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #131720;
+        }
+
+        .drop-area:hover { border-color: #60a5fa; background: #161d2e; }
+
+        .drop-area .icon { font-size: 40px; margin-bottom: 12px; }
+
+        .drop-area p { font-size: 15px; color: #94a3b8; margin-bottom: 6px; }
+
+        .drop-area small { color: #475569; font-size: 13px; }
+
+        #fileInput { display: none; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 28px;
+            border-radius: 8px;
+            border: none;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary { background: #2563eb; color: white; margin-top: 20px; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-primary:disabled { background: #1e3a5f; color: #475569; cursor: not-allowed; }
+
+        #dashboard { display: none; padding: 32px 40px; max-width: 1200px; margin: 0 auto; }
+
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+
+        .stat-card {
+            background: #131720;
+            border: 1px solid #1e2535;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #60a5fa;
+        }
+
+        .stat-card .sub {
+            font-size: 13px;
+            color: #475569;
+            margin-top: 4px;
+        }
+
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .chart-card {
+            background: #131720;
+            border: 1px solid #1e2535;
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .chart-card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 20px;
+        }
+
+        .ip-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        .ip-table th {
+            text-align: left;
+            padding: 10px 14px;
+            color: #64748b;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            border-bottom: 1px solid #1e2535;
+        }
+
+        .ip-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #1a2030;
+            color: #cbd5e1;
+            font-family: 'Courier New', monospace;
+        }
+
+        .ip-table tr:last-child td { border-bottom: none; }
+        .ip-table tr:hover td { background: #161d2e; }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #1e3a5f;
+            color: #60a5fa;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <h1>Network Traffic Analyzer</h1>
 
-    <input type="file" id="fileInput" accept=".pcap">
-    <button onclick="uploadFile()">Analyze</button>
+<header>
+    <h1>⬡ Network Traffic Analyzer</h1>
+    <span>Upload a .pcap file to inspect traffic</span>
+</header>
 
-    <div id="results" style="display:none">
-        <h2>Total Packets: <span id="totalPackets"></span></h2>
-        <h3>Protocol Breakdown</h3>
-        <pre id="protocols"></pre>
-        <h3>Top Source IPs</h3>
-        <pre id="sources"></pre>
-        <h3>Top Destination IPs</h3>
-        <pre id="destinations"></pre>
+<div class="upload-zone" id="uploadZone">
+    <h2>Analyze Network Traffic</h2>
+    <p>Upload a Wireshark capture file to visualize protocols, IPs, and patterns.</p>
+
+    <div class="drop-area" onclick="document.getElementById('fileInput').click()">
+        <div class="icon">📦</div>
+        <p id="dropText">Click to select a .pcap file</p>
+        <small>.pcap files only</small>
     </div>
 
-    <script>
-        async function uploadFile() {
-            const file = document.getElementById("fileInput").files[0];
-            if (!file) return alert("Please select a .pcap file");
+    <input type="file" id="fileInput" accept=".pcap" onchange="fileSelected(this)">
+    <br>
+    <button class="btn btn-primary" id="analyzeBtn" onclick="uploadFile()" disabled>
+        Analyze
+    </button>
+</div>
 
-            const formData = new FormData();
-            formData.append("file", file);
+<div class="loading" id="loading">⏳ Analyzing packets...</div>
 
-            const response = await fetch("/upload", {
-                method: "POST",
-                body: formData
-            });
+<div id="dashboard">
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="label">Total Packets</div>
+            <div class="value" id="totalPackets">—</div>
+            <div class="sub">captured in file</div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Top Source IP</div>
+            <div class="value" style="font-size:18px" id="topSrcIP">—</div>
+            <div class="sub" id="topSrcCount"></div>
+        </div>
+        <div class="stat-card">
+            <div class="label">Dominant Protocol</div>
+            <div class="value" style="font-size:24px" id="topProtocol">—</div>
+            <div class="sub" id="topProtoCount"></div>
+        </div>
+    </div>
 
-            const data = await response.json();
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>Protocol Breakdown</h3>
+            <canvas id="protocolChart" height="220"></canvas>
+        </div>
+        <div class="chart-card">
+            <h3>Top Source IPs</h3>
+            <canvas id="srcIPChart" height="220"></canvas>
+        </div>
+    </div>
 
-            document.getElementById("totalPackets").textContent = data.total_packets;
-            document.getElementById("protocols").textContent = JSON.stringify(data.protocol_counts, null, 2);
-            document.getElementById("sources").textContent = JSON.stringify(data.top_sources, null, 2);
-            document.getElementById("destinations").textContent = JSON.stringify(data.top_destinations, null, 2);
-            document.getElementById("results").style.display = "block";
+    <div class="charts-row">
+        <div class="chart-card">
+            <h3>Top Source IPs — Table</h3>
+            <table class="ip-table">
+                <thead><tr><th>#</th><th>IP Address</th><th>Packets</th></tr></thead>
+                <tbody id="srcTable"></tbody>
+            </table>
+        </div>
+        <div class="chart-card">
+            <h3>Top Destination IPs — Table</h3>
+            <table class="ip-table">
+                <thead><tr><th>#</th><th>IP Address</th><th>Packets</th></tr></thead>
+                <tbody id="dstTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    let selectedFile = null;
+
+    function fileSelected(input) {
+        selectedFile = input.files[0];
+        if (selectedFile) {
+            document.getElementById('dropText').textContent = selectedFile.name;
+            document.getElementById('analyzeBtn').disabled = false;
         }
-    </script>
+    }
+
+    async function uploadFile() {
+        if (!selectedFile) return;
+
+        document.getElementById('uploadZone').style.display = 'none';
+        document.getElementById('loading').style.display = 'block';
+
+        const formData = new FormData();
+        formData.append("file", selectedFile);
+
+        const response = await fetch("/upload", { method: "POST", body: formData });
+        const data = await response.json();
+
+        document.getElementById('loading').style.display = 'none';
+        renderDashboard(data);
+    }
+
+    function renderDashboard(data) {
+        document.getElementById('dashboard').style.display = 'block';
+
+        // Stat cards
+        document.getElementById('totalPackets').textContent = data.total_packets;
+
+        const topSrc = data.top_sources[0];
+        document.getElementById('topSrcIP').textContent = topSrc[0];
+        document.getElementById('topSrcCount').textContent = topSrc[1] + ' packets sent';
+
+        const proto = Object.entries(data.protocol_counts).sort((a,b) => b[1]-a[1])[0];
+        document.getElementById('topProtocol').textContent = proto[0];
+        document.getElementById('topProtoCount').textContent = proto[1] + ' packets';
+
+        // Protocol pie chart
+        const protoLabels = Object.keys(data.protocol_counts);
+        const protoValues = Object.values(data.protocol_counts);
+        new Chart(document.getElementById('protocolChart'), {
+            type: 'doughnut',
+            data: {
+                labels: protoLabels,
+                datasets: [{
+                    data: protoValues,
+                    backgroundColor: ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#64748b'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                plugins: { legend: { labels: { color: '#94a3b8', font: { size: 13 } } } }
+            }
+        });
+
+        // Source IP bar chart
+        const srcLabels = data.top_sources.map(x => x[0]);
+        const srcValues = data.top_sources.map(x => x[1]);
+        new Chart(document.getElementById('srcIPChart'), {
+            type: 'bar',
+            data: {
+                labels: srcLabels,
+                datasets: [{
+                    label: 'Packets',
+                    data: srcValues,
+                    backgroundColor: '#3b82f6',
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#1e2535' } },
+                    y: { ticks: { color: '#64748b' }, grid: { color: '#1e2535' } }
+                }
+            }
+        });
+
+        // IP Tables
+        const srcTable = document.getElementById('srcTable');
+        data.top_sources.forEach((ip, i) => {
+            srcTable.innerHTML += `<tr><td><span class="badge">${i+1}</span></td><td>${ip[0]}</td><td>${ip[1]}</td></tr>`;
+        });
+
+        const dstTable = document.getElementById('dstTable');
+        data.top_destinations.forEach((ip, i) => {
+            dstTable.innerHTML += `<tr><td><span class="badge">${i+1}</span></td><td>${ip[0]}</td><td>${ip[1]}</td></tr>`;
+        });
+    }
+</script>
+
 </body>
 </html>
