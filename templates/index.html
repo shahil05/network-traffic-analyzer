@@ -190,6 +190,58 @@
             color: #64748b;
             display: none;
         }
+        .anomalies-card {
+    background: #131720;
+    border: 1px solid #1e2535;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 28px;
+}
+
+.anomalies-card h3 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 20px;
+}
+
+.anomaly-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 14px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid transparent;
+}
+
+.anomaly-item.high {
+    background: #1f0f0f;
+    border-color: #7f1d1d;
+}
+
+.anomaly-item.medium {
+    background: #1a1500;
+    border-color: #713f12;
+}
+
+.anomaly-badge {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.anomaly-badge.high { background: #7f1d1d; color: #fca5a5; }
+.anomaly-badge.medium { background: #713f12; color: #fcd34d; }
+
+.anomaly-ip { font-family: 'Courier New', monospace; font-size: 13px; color: #f87171; font-weight: 600; }
+.anomaly-detail { font-size: 13px; color: #94a3b8; margin-top: 3px; }
+.no-anomalies { color: #10b981; font-size: 14px; padding: 12px 0; }
     </style>
 </head>
 <body>
@@ -263,6 +315,10 @@
                 <tbody id="dstTable"></tbody>
             </table>
         </div>
+    </div>
+    <div class="anomalies-card" id="anomaliesCard">
+        <h3>⚠ Anomalies Detected</h3>
+        <div id="anomaliesList"></div>
     </div>
 </div>
 
@@ -358,7 +414,27 @@
         data.top_destinations.forEach((ip, i) => {
             dstTable.innerHTML += `<tr><td><span class="badge">${i+1}</span></td><td>${ip[0]}</td><td>${ip[1]}</td></tr>`;
         });
+        renderAnomalies(data.anomalies);
     }
+    function renderAnomalies(anomalies) {
+    const list = document.getElementById('anomaliesList');
+    
+    if (anomalies.length === 0) {
+        list.innerHTML = '<p class="no-anomalies">✓ No anomalies detected — traffic looks clean</p>';
+        return;
+    }
+
+    anomalies.forEach(a => {
+        list.innerHTML += `
+            <div class="anomaly-item ${a.severity}">
+                <span class="anomaly-badge ${a.severity}">${a.type}</span>
+                <div>
+                    <div class="anomaly-ip">${a.ip}</div>
+                    <div class="anomaly-detail">${a.detail}</div>
+                </div>
+            </div>`;
+    });
+}
 </script>
 
 </body>

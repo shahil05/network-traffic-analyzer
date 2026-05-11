@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 import os
-from parser import parse_pcap
+from parser import parse_pcap, detect_anomalies
 
 app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
@@ -23,6 +23,7 @@ def upload_file():
     file.save(filepath)
     
     result = parse_pcap(filepath)
+    result["anomalies"] = detect_anomalies(filepath)
     return jsonify(result)
 
 if __name__ == "__main__":
