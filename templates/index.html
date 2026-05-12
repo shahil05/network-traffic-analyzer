@@ -6,6 +6,12 @@
     <title>Network Traffic Analyzer</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
     <style>
+        @media print {
+    .upload-zone, .export-btn, header { display: none; }
+    body { background: white; color: black; }
+    .stat-card, .chart-card, .anomalies-card { border: 1px solid #ccc; background: white; }
+    .stat-card .value { color: #1E3A5F; }
+}
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
@@ -242,6 +248,30 @@
 .anomaly-ip { font-family: 'Courier New', monospace; font-size: 13px; color: #f87171; font-weight: 600; }
 .anomaly-detail { font-size: 13px; color: #94a3b8; margin-top: 3px; }
 .no-anomalies { color: #10b981; font-size: 14px; padding: 12px 0; }
+.drop-area.dragover {
+    border-color: #60a5fa;
+    background: #161d2e;
+    transform: scale(1.02);
+    transition: all 0.2s;
+}
+
+.export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border-radius: 8px;
+    border: 1px solid #1e2535;
+    background: #131720;
+    color: #94a3b8;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 28px;
+    transition: all 0.2s;
+}
+
+.export-btn:hover { border-color: #60a5fa; color: #60a5fa; }
     </style>
 </head>
 <body>
@@ -255,9 +285,14 @@
     <h2>Analyze Network Traffic</h2>
     <p>Upload a Wireshark capture file to visualize protocols, IPs, and patterns.</p>
 
-    <div class="drop-area" onclick="document.getElementById('fileInput').click()">
+   <div class="drop-area" 
+         onclick="document.getElementById('fileInput').click()"
+         ondragover="handleDragOver(event)"
+         ondragleave="handleDragLeave(event)"
+         ondrop="handleDrop(event)"
+         id="dropArea">
         <div class="icon">📦</div>
-        <p id="dropText">Click to select a .pcap file</p>
+        <p id="dropText">Click or drag a .pcap file here</p>
         <small>.pcap files only</small>
     </div>
 
@@ -271,6 +306,7 @@
 <div class="loading" id="loading">⏳ Analyzing packets...</div>
 
 <div id="dashboard">
+    <button class="export-btn" onclick="exportPDF()">⬇ Export as PDF</button>
     <div class="stats-row">
         <div class="stat-card">
             <div class="label">Total Packets</div>
@@ -315,6 +351,10 @@
                 <tbody id="dstTable"></tbody>
             </table>
         </div>
+    </div>
+    <div class="chart-card" style="margin-bottom: 28px;">
+        <h3>Packet Timeline — Traffic Volume per Second</h3>
+        <canvas id="timelineChart" height="120"></canvas>
     </div>
     <div class="anomalies-card" id="anomaliesCard">
         <h3>⚠ Anomalies Detected</h3>
@@ -414,6 +454,7 @@
         data.top_destinations.forEach((ip, i) => {
             dstTable.innerHTML += `<tr><td><span class="badge">${i+1}</span></td><td>${ip[0]}</td><td>${ip[1]}</td></tr>`;
         });
+        renderTimeline(data.timeline);
         renderAnomalies(data.anomalies);
     }
     function renderAnomalies(anomalies) {
@@ -434,6 +475,63 @@
                 </div>
             </div>`;
     });
+}
+// Drag and drop handlers
+function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('dropArea').classList.add('dragover');
+}
+
+function handleDragLeave(e) {
+    document.getElementById('dropArea').classList.remove('dragover');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropArea').classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file && file.name.endsWith('.pcap')) {
+        selectedFile = file;
+        document.getElementById('dropText').textContent = file.name;
+        document.getElementById('analyzeBtn').disabled = false;
+    } else {
+        alert('Please drop a .pcap file');
+    }
+}
+
+// Timeline chart
+function renderTimeline(timeline) {
+    if (!timeline || timeline.length === 0) return;
+    const labels = timeline.map(x => x.second + 's');
+    const values = timeline.map(x => x.count);
+    new Chart(document.getElementById('timelineChart'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Packets',
+                data: values,
+                borderColor: '#60a5fa',
+                backgroundColor: 'rgba(96,165,250,0.1)',
+                borderWidth: 2,
+                pointRadius: 3,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#1e2535' } },
+                y: { ticks: { color: '#64748b' }, grid: { color: '#1e2535' }, beginAtZero: true }
+            }
+        }
+    });
+}
+
+// PDF export
+function exportPDF() {
+    window.print();
 }
 </script>
 

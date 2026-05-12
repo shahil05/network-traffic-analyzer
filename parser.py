@@ -90,3 +90,18 @@ def detect_anomalies(filepath):
                 })
 
     return anomalies
+def get_timeline(filepath):
+    packets = rdpcap(filepath)
+    
+    if not packets:
+        return []
+    
+    timeline = {}
+    start_time = float(packets[0].time)
+    
+    for packet in packets:
+        elapsed = int(float(packet.time) - start_time)
+        timeline[elapsed] = timeline.get(elapsed, 0) + 1
+    
+    result = [{"second": k, "count": v} for k, v in sorted(timeline.items())]
+    return result

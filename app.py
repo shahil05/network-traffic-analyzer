@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify, render_template
 import os
-from parser import parse_pcap, detect_anomalies
+from parser import parse_pcap, detect_anomalies, get_timeline
 
 app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
@@ -24,6 +24,7 @@ def upload_file():
     
     result = parse_pcap(filepath)
     result["anomalies"] = detect_anomalies(filepath)
+    result["timeline"] = get_timeline(filepath)
     return jsonify(result)
 
 if __name__ == "__main__":
